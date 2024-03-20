@@ -3,7 +3,7 @@ from time import sleep
 from Getmap import GetImage
 
 
-class Chatgpt:
+class Chatgpt_Msg:
     def __init__(self) -> None:
         self.client = OpenAI()
       
@@ -16,9 +16,10 @@ class Chatgpt:
             ]
         )
         return completion.choices[0].message.content
-
-
+    
 #Example
 
 # LLM = Chatgpt()
 # print(LLM.Chat("professor", "Give me some typical indicators about population profile"))
+
+# TODO: Chatgpt_Tool to read pdf and extract data
