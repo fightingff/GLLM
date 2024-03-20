@@ -18,6 +18,7 @@ class Chatgpt:
         return completion.choices[0].message.content
 
 
-LLM = Chatgpt()
+#Example
 
-print(LLM.Chat("professor", "Give me some typical indicators about population profile"))
+# LLM = Chatgpt()
+# print(LLM.Chat("professor", "Give me some typical indicators about population profile"))
