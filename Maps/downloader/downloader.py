@@ -2,7 +2,7 @@ import requests
 import random
 import math
 
-URL = "http://mt{id}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}&s=Gali"
+URL = "http://mt{id}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}&s=Gali&t=2000"
 
 def download_tile(x, y, z):
     url = URL.format(id=random.randint(0,3), x=x, y=y, z=z)
