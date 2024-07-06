@@ -4,6 +4,19 @@ import math
 import matplotlib.pyplot as plt
 from PIL import Image
 
+timestamp = dict(
+    {
+        2023: '64776',
+        2022: '47471',
+        2021: '8432',
+        2020: '20753',
+        2019: '11351',
+        2018: '2168',
+        2016: '6984',
+        2014: '23383',
+    }
+)
+
 def lat_lon_to_tile(lon, lat, zoom):
     lat_rad = math.radians(lat)
     n = 2.0 ** zoom
@@ -11,7 +24,7 @@ def lat_lon_to_tile(lon, lat, zoom):
     ytile = int((1.0 - math.log(math.tan(lat_rad) + (1 / math.cos(lat_rad))) / math.pi) / 2.0 * n)
     return (xtile, ytile)
 
-def construct_url(xtile, ytile, zoom, time='11351'):
+def construct_url(xtile, ytile, zoom, time=timestamp[2014]):
     base_url = 'https://wayback.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile'
     url = f"{base_url}/{time}/{int(zoom)}/{ytile}/{xtile}"
     return url
