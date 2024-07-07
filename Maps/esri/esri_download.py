@@ -103,10 +103,6 @@ if __name__ == "__main__":
     # for index, row in df.iterrows():
     #     download_tile_task(row)
 
-    # 去重
-    df.drop_duplicates(subset=['cluster_id', 'year'], keep='first', inplace=True)
-    print(f"total times: {df.count()}")
-
     # 多线程
     # with ThreadPoolExecutor(max_workers=100) as executor:
     #     futures = [executor.submit(download_tile_task, row) for index, row in df.iterrows()]
@@ -119,10 +115,17 @@ if __name__ == "__main__":
 
     # 创建任务队列
     task_queue = queue.Queue()
-
+    path_set = set() # 去重
     # 填充任务队列
     for index, row in df.iterrows():
+        time_version = timestamp[row['year']]
+        path = os.path.join('images', f"{row['cluster_id']}_{time_version}.png")
+        if path in path_set:
+            continue
+        path_set.add(path)
         task_queue.put(row)
+
+    print(f"Total tasks: {task_queue.qsize()}")
 
     # 创建线程
     num_threads = 100
