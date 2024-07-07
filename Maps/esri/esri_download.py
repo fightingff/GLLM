@@ -12,32 +12,31 @@ from PIL import Image
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # 扒下来的瓦片的时间戳, 最早只能到2014年
-timestamp = dict(
-    {
-        2023: '64776',
-        2022: '47471',
-        2021: '8432',
-        2020: '20753',
-        2019: '11351',
-        2018: '2168',
-        2017: '2168',
-        2016: '6984',
-        2015: '6984',
-        2014: '23383',
-        2013: '23383',
-        2012: '23383',
-        2011: '23383',
-        2010: '23383',
-        2009: '23383',
-        2008: '23383',
-        2007: '23383',
-        2006: '23383',
-        2005: '23383',
-        2004: '23383',
-        2003: '23383',
-        2002: '23383',
-    }
-)
+timestamp = {
+    2023: '64776',
+    2022: '47471',
+    2021: '8432',
+    2020: '20753',
+    2019: '11351',
+    2018: '2168',
+    2017: '2168',
+    2016: '6984',
+    2015: '6984',
+    2014: '23383',
+    2013: '23383',
+    2012: '23383',
+    2011: '23383',
+    2010: '23383',
+    2009: '23383',
+    2008: '23383',
+    2007: '23383',
+    2006: '23383',
+    2005: '23383',
+    2004: '23383',
+    2003: '23383',
+    2002: '23383',
+}
+
 
 # 经纬度转瓦片坐标
 def lat_lon_to_tile(lon, lat, zoom):
@@ -53,12 +52,12 @@ def construct_url(xtile, ytile, zoom, time):
     return url
 
 # 传入经纬度，下载瓦片，并保存到指定路径
-def download_tile(path, lon, lat, year, zoom=17):
+def download_tile(path, lon, lat, time_version, zoom=17):
     xtile, ytile = lat_lon_to_tile(lon, lat, zoom)
     images = []
     for j in range(-1, 2):
         for i in range(-1, 2):
-            url = construct_url(xtile + i, ytile + j, zoom, timestamp[year])
+            url = construct_url(xtile + i, ytile + j, zoom, time_version)
             img = requests.get(url).content
             images.append(Image.open(io.BytesIO(img)))
 
@@ -73,13 +72,13 @@ def download_tile(path, lon, lat, year, zoom=17):
     new_image.save(path)
 
 def download_tile_task(row):
-    path = os.path.join('images', f"{row['cluster_id']}_{row['year']}.png")
+    time_version = timestamp[row['year']]
+    path = os.path.join('images', f"{row['cluster_id']}_{time_version}.png")
     if os.path.exists(path):
-        print(f"Tile for {row['cluster_id']} in {row['year']} already exists")
+        print(f"Tile for {row['cluster_id']} in {time_version} already exists")
         return
-    download_tile(path, row['lon'], row['lat'], row['year'])
-
-    print(f"Downloaded tile for {row['cluster_id']} in {row['year']}")
+    download_tile(path, row['lon'], row['lat'], time_version)
+    print(f"Downloaded tile for {row['cluster_id']} in {time_version}")
 
 if __name__ == "__main__":
     # 读取 india_infant_mort
