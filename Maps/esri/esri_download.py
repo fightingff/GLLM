@@ -5,11 +5,13 @@ import io
 import os
 import requests
 import random
+import time
 import math
 import matplotlib.pyplot as plt
 import pandas as pd
 from PIL import Image
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import threading
+import queue
 
 # 扒下来的瓦片的时间戳, 最早只能到2014年
 timestamp = {
@@ -36,7 +38,6 @@ timestamp = {
     2003: '23383',
     2002: '23383',
 }
-
 
 # 经纬度转瓦片坐标
 def lat_lon_to_tile(lon, lat, zoom):
@@ -69,16 +70,30 @@ def download_tile(path, lon, lat, time_version, zoom=17):
             new_image.paste(images[index], (i * width, j * height))
             index += 1
             
-    new_image.save(path)
+    new_image.save(path, 'PNG', optimize=True)
 
 def download_tile_task(row):
     time_version = timestamp[row['year']]
     path = os.path.join('images', f"{row['cluster_id']}_{time_version}.png")
     if os.path.exists(path):
-        print(f"Tile for {row['cluster_id']} in {time_version} already exists")
+        print(f"Tile for {row['cluster_id']} in {time_version} already exists\n", end='')
         return
     download_tile(path, row['lon'], row['lat'], time_version)
-    print(f"Downloaded tile for {row['cluster_id']} in {time_version}")
+    print(f"Downloaded tile for {row['cluster_id']} in {time_version}\n", end='')
+
+# 多线程 worker
+def worker(q):
+    while True:
+        row = q.get()
+        if row is None:
+            break
+        try:
+            download_tile_task(row)
+        except Exception as e:
+            print(f"An error occurred in {row['cluster_id']}_{timestamp[row['year']]}: {e}")
+            q.put(row)
+        finally:
+            q.task_done()
 
 if __name__ == "__main__":
     # 读取 india_infant_mort
@@ -90,11 +105,34 @@ if __name__ == "__main__":
     # for index, row in df.iterrows():
     #     download_tile_task(row)
 
+    # 去重
+    df.drop_duplicates(subset=['cluster_id', 'year'], keep='first', inplace=True)
+
     # 多线程
-    with ThreadPoolExecutor(max_workers=20) as executor:
-        futures = [executor.submit(download_tile_task, row) for index, row in df.iterrows()]
-        for future in as_completed(futures):
-            try:
-                future.result()
-            except Exception as e:
-                print(f"An error occurred: {e}")
+    # with ThreadPoolExecutor(max_workers=100) as executor:
+    #     futures = [executor.submit(download_tile_task, row) for index, row in df.iterrows()]
+    #     for future in as_completed(futures):
+    #         try:
+    #             future.result()
+    #         except Exception as e:
+    #             print(f"An error occurred: {e}")
+
+
+    # 创建任务队列
+    task_queue = queue.Queue()
+
+    # 填充任务队列
+    for index, row in df.iterrows():
+        task_queue.put(row)
+
+    # 创建线程
+    num_threads = 100
+    threads = []
+    for _ in range(num_threads):
+        t = threading.Thread(target=worker, args=(task_queue,))
+        time.sleep(0.1)
+        t.start()
+        threads.append(t)
+
+    # 等待所有任务完成
+    task_queue.join()
