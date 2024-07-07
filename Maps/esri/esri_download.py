@@ -85,8 +85,6 @@ def download_tile_task(row):
 def worker(q):
     while True:
         row = q.get()
-        if row is None:
-            break
         try:
             download_tile_task(row)
         except Exception as e:
@@ -107,6 +105,7 @@ if __name__ == "__main__":
 
     # 去重
     df.drop_duplicates(subset=['cluster_id', 'year'], keep='first', inplace=True)
+    print(f"total times: {df.count()}")
 
     # 多线程
     # with ThreadPoolExecutor(max_workers=100) as executor:
