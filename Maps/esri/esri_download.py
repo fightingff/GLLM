@@ -12,6 +12,8 @@ import pandas as pd
 from PIL import Image
 import threading
 import queue
+import numpy as np
+import cv2
 
 # 扒下来的瓦片的时间戳, 最早只能到2014年
 timestamp = {
@@ -53,7 +55,7 @@ def construct_url(xtile, ytile, zoom, time):
     return url
 
 # 传入经纬度，下载瓦片，并保存到指定路径
-def download_tile(path, lon, lat, time_version, zoom=17):
+def download_tile_PIL(path, lon, lat, time_version, zoom=17):
     xtile, ytile = lat_lon_to_tile(lon, lat, zoom)
     images = []
     for j in range(-1, 2):
@@ -72,13 +74,33 @@ def download_tile(path, lon, lat, time_version, zoom=17):
             
     new_image.save(path, 'PNG', optimize=True)
 
+def download_tile_cv2(path, lon, lat, time_version, zoom=17):
+    xtile, ytile = lat_lon_to_tile(lon, lat, zoom)
+    images = []
+    for j in range(-1, 2):
+        for i in range(-1, 2):
+            url = construct_url(xtile + i, ytile + j, zoom, time_version)
+            img = requests.get(url).content
+            img_array = np.frombuffer(img, np.uint8)
+            img_cv2 = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+            images.append(img_cv2)
+
+    # 拼接图像
+    row1 = cv2.hconcat([images[0], images[1], images[2]])
+    row2 = cv2.hconcat([images[3], images[4], images[5]])
+    row3 = cv2.hconcat([images[6], images[7], images[8]])
+    new_image = cv2.vconcat([row1, row2, row3])
+
+    # 保存图像
+    cv2.imwrite(path, new_image, [int(cv2.IMWRITE_PNG_COMPRESSION), 9])
+
 def download_tile_task(row):
     time_version = timestamp[row['year']]
     path = os.path.join('images', f"{row['cluster_id']}_{time_version}.png")
     if os.path.exists(path):
         print(f"Tile for {row['cluster_id']} in {time_version} already exists\n", end='')
         return
-    download_tile(path, row['lon'], row['lat'], time_version)
+    download_tile_cv2(path, row['lon'], row['lat'], time_version)
     print(f"Downloaded tile for {row['cluster_id']} in {time_version}\n", end='')
 
 # 多线程 worker
@@ -112,10 +134,12 @@ if __name__ == "__main__":
     #         except Exception as e:
     #             print(f"An error occurred: {e}")
 
+    df.drop(df[df['infant_mort'] == 0].index, inplace=True)
 
     # 创建任务队列
     task_queue = queue.Queue()
     path_set = set() # 去重
+    
     # 填充任务队列
     for index, row in df.iterrows():
         time_version = timestamp[row['year']]
